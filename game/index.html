@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VELORIA — Harbor Heat</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1210; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.8); }
+  .hidden { display: none !important; }
+  #minimap-wrap { position: absolute; top: 16px; left: 16px; width: 216px; height: 216px; border: 3px solid rgba(255,255,255,.85); border-radius: 50%; overflow: hidden; box-shadow: 0 4px 18px rgba(0,0,0,.5); background: #2a2f33; }
+  #minimap { width: 100%; height: 100%; display: block; }
+  #top-right { position: absolute; top: 16px; right: 20px; text-align: right; }
+  #wanted { font-size: 34px; letter-spacing: 4px; color: #ffd23e; min-height: 44px; }
+  #wanted .dim { color: rgba(255,255,255,.35); }
+  #cash { font-size: 30px; font-weight: bold; color: #7ae582; }
+  #rank { font-size: 15px; color: #ffd9a0; letter-spacing: 1px; }
+  #clock { font-size: 15px; color: rgba(255,255,255,.85); }
+  #objective { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); max-width: 46%; text-align: center; font-size: 21px; font-weight: bold; background: rgba(10,10,14,.55); padding: 8px 18px; border-radius: 8px; border-left: 5px solid #ffb02e; }
+  #objective .obj-title { font-size: 13px; color: #ffb02e; letter-spacing: 2px; font-weight: normal; }
+  #subtitle { position: absolute; bottom: 128px; left: 50%; transform: translateX(-50%); max-width: 60%; text-align: center; font-size: 19px; background: rgba(0,0,0,.55); padding: 8px 16px; border-radius: 6px; }
+  #subtitle b { color: #ffd23e; }
+  #prompt { position: absolute; bottom: 92px; left: 50%; transform: translateX(-50%); font-size: 18px; background: rgba(10,10,14,.6); padding: 7px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,.4); }
+  #prompt b { color: #ffd23e; }
+  #vitals { position: absolute; left: 20px; bottom: 20px; width: 260px; }
+  .bar-label { font-size: 13px; letter-spacing: 2px; color: rgba(255,255,255,.9); margin-bottom: 3px; }
+  .bar { height: 14px; background: rgba(0,0,0,.55); border-radius: 7px; overflow: hidden; margin-bottom: 8px; border: 1px solid rgba(255,255,255,.35); }
+  .bar > div { height: 100%; transition: width .15s; }
+  #health-bar { background: linear-gradient(90deg, #37c758, #7ae582); width: 100%; }
+  #armor-bar { background: linear-gradient(90deg, #3a6fd8, #7ab2ff); width: 0%; }
+  #drive { position: absolute; right: 20px; bottom: 20px; text-align: right; }
+  #speed { font-size: 40px; font-weight: bold; line-height: 1; }
+  #speed small { font-size: 15px; font-weight: normal; color: rgba(255,255,255,.8); }
+  #weapon { font-size: 19px; margin-top: 6px; }
+  #weapon b { color: #ffd23e; }
+  #toast { position: absolute; top: 196px; right: 20px; text-align: right; font-size: 17px; }
+  #toast div { background: rgba(10,10,14,.6); padding: 6px 12px; border-radius: 6px; margin-top: 6px; }
+  #banner { position: absolute; top: 34%; left: 0; right: 0; text-align: center; }
+  #banner-title { font-size: 56px; font-weight: bold; letter-spacing: 3px; color: #ffd23e; text-shadow: 0 4px 18px rgba(0,0,0,.9); }
+  #banner-sub { font-size: 22px; margin-top: 6px; }
+  #vignette { position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px 40px rgba(200,0,0,0); transition: box-shadow .1s; }
+  #hint { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); font-size: 14px; color: rgba(255,255,255,.75); background: rgba(0,0,0,.4); padding: 5px 12px; border-radius: 12px; }
+  .menu { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; text-align: center; z-index: 5; }
+  #menu { background: linear-gradient(180deg, rgba(20,10,8,.25) 0%, rgba(20,10,8,.55) 55%, rgba(10,6,8,.88) 100%); }
+  #logo { font-size: 96px; font-weight: bold; letter-spacing: 14px; color: #fff; text-shadow: 0 6px 0 #c22e2e, 0 10px 30px rgba(0,0,0,.8); margin: 0; }
+  #logo span { color: #ffd23e; }
+  #tagline { font-size: 22px; letter-spacing: 6px; color: #ffd9a0; margin: 4px 0 30px; text-shadow: 0 2px 8px rgba(0,0,0,.9); }
+  .btn { pointer-events: auto; cursor: pointer; font-family: inherit; font-size: 20px; font-weight: bold; letter-spacing: 2px; color: #fff; background: rgba(194,46,46,.92); border: 2px solid #ffd23e; border-radius: 8px; padding: 12px 42px; margin: 6px; min-width: 300px; }
+  .btn:hover { background: #e04040; }
+  .btn.secondary { background: rgba(20,20,28,.85); }
+  #menu-foot { margin-top: 26px; font-size: 14px; color: rgba(255,255,255,.8); max-width: 640px; line-height: 1.5; }
+  .panel { background: rgba(12,12,18,.92); border: 2px solid #ffb02e; border-radius: 12px; padding: 28px 36px; max-width: 620px; }
+  .panel h2 { margin: 0 0 12px; font-size: 34px; letter-spacing: 3px; color: #ffd23e; }
+  .panel p { font-size: 17px; line-height: 1.55; margin: 8px 0; }
+  .panel table { margin: 12px auto; border-collapse: collapse; font-size: 16px; }
+  .panel td { padding: 4px 14px; text-align: left; }
+  .panel td:first-child { color: #ffd23e; font-weight: bold; white-space: nowrap; }
+  #endscreen { background: rgba(8,8,12,.72); }
+  #end-title { font-size: 64px; font-weight: bold; letter-spacing: 6px; margin: 0; }
+  #end-sub { font-size: 20px; margin: 10px 0 20px; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Veloria: drive and walk through a sun-soaked open-world city, take missions, evade the police"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="minimap-wrap"><canvas id="minimap" width="216" height="216"></canvas></div>
+  <div id="top-right">
+    <div id="wanted"></div>
+    <div id="cash">$0</div>
+    <div id="rank"></div>
+    <div id="clock"></div>
+  </div>
+  <div id="objective" class="hidden"><div class="obj-title" id="obj-mission"></div><div id="obj-text"></div></div>
+  <div id="subtitle" class="hidden"></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="vitals">
+    <div class="bar-label">HEALTH</div>
+    <div class="bar"><div id="health-bar"></div></div>
+    <div class="bar-label">ARMOR</div>
+    <div class="bar"><div id="armor-bar"></div></div>
+  </div>
+  <div id="drive">
+    <div id="speed" class="hidden">0<small> mph</small></div>
+    <div id="weapon"></div>
+  </div>
+  <div id="toast"></div>
+  <div id="banner" class="hidden"><div id="banner-title"></div><div id="banner-sub"></div></div>
+  <div id="hint">WASD move · Mouse look · E enter car · Q talk / start mission · P pause</div>
+</div>
+<div id="vignette"></div>
+
+<div id="menu" class="menu">
+  <h1 id="logo">VELOR<span>IA</span></h1>
+  <div id="tagline">HARBOR HEAT</div>
+  <button class="btn" id="btn-start">NEW GAME</button>
+  <button class="btn secondary hidden" id="btn-continue">CONTINUE STORY</button>
+  <button class="btn secondary" id="btn-help">HOW TO PLAY</button>
+  <div id="menu-foot">An original open-world crime story. Drive, steal, run missions for Ivy Chen and Reyes, and take Veloria from the Harbor Syndicate — while the VPD watches. Progress saves automatically in this browser.</div>
+</div>
+
+<div id="pause" class="menu hidden">
+  <div class="panel">
+    <h2>PAUSED</h2>
+    <p id="pause-stats"></p>
+    <button class="btn" id="btn-resume">RESUME</button>
+    <button class="btn secondary" id="btn-help2">CONTROLS</button>
+    <button class="btn secondary" id="btn-quit">SAVE &amp; TITLE</button>
+  </div>
+</div>
+
+<div id="help" class="menu hidden">
+  <div class="panel">
+    <h2>HOW TO PLAY</h2>
+    <p>Mara Quinn is a getaway driver in Veloria. Visit <b>Ivy's Garage</b> (G on the map) and press <b>Q</b> to start story missions. Steal cars with <b>E</b>, lose the cops by breaking line of sight, or pay for a respray. Green diamonds are hidden packages worth $100 each.</p>
+    <table id="controls-table"></table>
+    <button class="btn" id="btn-help-close">GOT IT</button>
+  </div>
+</div>
+
+<div id="endscreen" class="menu hidden">
+  <h1 id="end-title"></h1>
+  <div id="end-sub"></div>
+  <button class="btn" id="btn-end">CONTINUE</button>
+</div>
+
+<p id="status" role="status" aria-live="polite"></p>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
